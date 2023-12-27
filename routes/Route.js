@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Mobile = require("../models/Mobiles");
-import "./data.js";
+const data = require("./data.js");
 
 //get all mobiles
 router.get("/all", async (req, res) => {
