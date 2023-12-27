@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Mobile = require("../models/Mobiles");
-const data = require("./data.js");
+const Imgdata = require("./data.js");
 
 //get all mobiles
 router.get("/all", async (req, res) => {
@@ -25,30 +25,37 @@ router.get("/all", async (req, res) => {
 //post a mobile entry
 router.post("/add", async (req, res) => {
 	try {
-		console.log(req.body);
-		const mobile = new Mobile(req.body);
+		const data = req.body;
+		console.log(data);
 
-		if (mobile.brand) {
-			mobile.brand = mobile.brand.toLowerCase().charAt(0).toUpperCase();
+		if (data.brand) {
+			data.brand =
+				data.brand.charAt(0).toUpperCase() +
+				data.brand.slice(1).toLowerCase();
 		}
-		if (!mobile.key) {
+		if (!data.key) {
 			const key =
-				mobile.mobName.replace(" ", "-").toLowerCase() +
+				data.mobName.replace(" ", "-").toLowerCase() +
 				"-" +
 				Math.floor(100000 + Math.random() * 900000); // random 6 digt number
-			mobile.key = key;
+			data.key = key;
 		}
 
-		if (mobile.storage) {
+		if (data.storage) {
 			//just for enhancing the viewing data
-			mobile.storage = mobile.storage + " storage, microSDXC";
+			data.storage = data.storage + " storage, microSDXC";
 		}
-		if (!mobile.mobImg) {
-			const image = data[Math.floor(Math.random() * data.length)].mobImg;
-			mobile.mobImg = image;
+		console.log(data);
+		if (!data?.mobImg) {
+			const image =
+				Imgdata[Math.floor(Math.random() * Imgdata.length)].mobImg;
+			data.mobImg = image;
 			//randomly take from my data.js file
 		}
 
+		console.log(data);
+		const mobile = new Mobile(data);
+		console.log(mobile);
 		await mobile.save();
 
 		res.status(200).json({

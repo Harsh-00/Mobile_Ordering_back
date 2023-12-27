@@ -1,6 +1,6 @@
 // Data got from internet after searching a lot (modified as per need)
 
-data = [
+const data = [
 	{
 		brand: "Apple",
 		key: "apple_iphone_13_pro_max-11089",
@@ -934,3 +934,5 @@ data = [
 		storage: "128GB/256GB storage, no card slot",
 	},
 ];
+
+module.exports = data;
