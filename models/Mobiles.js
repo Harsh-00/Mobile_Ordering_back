@@ -25,18 +25,22 @@ const mobileSchema = new mongoose.Schema({
 	display: {
 		type: Number,
 		trime: true,
+		default: "6.7",
 	},
 	ram: {
 		type: Number,
 		trime: true,
+		default: "6",
 	},
 	camera: {
 		type: Number,
 		trime: true,
+		default: "12MP",
 	},
 	battery: {
 		type: Number,
 		trime: true,
+		default: "4000",
 	},
 	relasingDate: {
 		type: String,
@@ -46,28 +50,36 @@ const mobileSchema = new mongoose.Schema({
 	storage: {
 		type: String,
 		trime: true,
+		default: "128GB/256GB storage, microSDXC",
 	},
 	price: {
 		type: Number,
 		trime: true,
+		required: true,
 	},
 	chipset: {
 		type: String,
+		default: "Apple A15 Bionic",
 	},
 	batteryType: {
 		type: String,
+		default: "Li-Ion",
 	},
 	osType: {
 		type: String,
+		default: "iOS 15, up to iOS 17.2",
 	},
 	body: {
 		type: String,
+		default: "240g, 7.7mm thickness",
 	},
 	video: {
 		type: String,
+		default: "2160p",
 	},
 	displayRes: {
 		type: String,
+		default: "1284x2778 pixels",
 	},
 });
 
