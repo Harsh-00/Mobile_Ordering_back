@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Mobile = require("../models/Mobiles");
+import "../data";
 
 //get all mobiles
 router.get("/all", async (req, res) => {
@@ -26,7 +27,30 @@ router.post("/add", async (req, res) => {
 	try {
 		console.log(req.body);
 		const mobile = new Mobile(req.body);
+
+		if (mobile.brand) {
+			mobile.brand = mobile.brand.toLowerCase().charAt(0).toUpperCase();
+		}
+		if (!mobile.key) {
+			const key =
+				mobile.mobName.replace(" ", "-").toLowerCase() +
+				"-" +
+				Math.floor(100000 + Math.random() * 900000); // random 6 digt number
+			mobile.key = key;
+		}
+
+		if (mobile.storage) {
+			//just for enhancing the viewing data
+			mobile.storage = mobile.storage + " storage, microSDXC";
+		}
+		if (!mobile.mobImg) {
+			const image = data[Math.floor(Math.random() * data.length)].mobImg;
+			mobile.mobImg = image;
+			//randomly take from my data.js file
+		}
+
 		await mobile.save();
+
 		res.status(200).json({
 			success: true,
 			message: "Mobile Added Successfully",

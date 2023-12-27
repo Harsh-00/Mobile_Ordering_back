@@ -21,26 +21,6 @@ data = [
 		storage: "128GB/256GB/1TB storage, no card slot",
 	},
 
-	// {
-	// 	"brand": "Apple",
-	// 		"key": "apple_iphone_13_pro_max-11089",
-	// 		"mobName": "Apple iPhone 13 Pro Max",
-	// 		"mobImg":
-	// 			"https://fdn2.gsmarena.com/vv/bigpic/apple-iphone-13-pro-max.jpg",
-	// 		"display": "6.7",
-	// 		"displayRes": "1284x2778 pixels",
-	// 		"camera": "12",
-	// 		"video": "2160p",
-	// 		"ram": "6",
-	// 		"price":"500",
-	// 		"chipset": "Apple A15 Bionic",
-	// 		"battery": "4352",
-	// 		"batteryType": "Li-Ion",
-	// 		"relasingDate": "Released 2021, September 24",
-	// 		"body": "240g, 7.7mm thickness",
-	// 		"osType": "iOS 15, up to iOS 17.2",
-	// 		"storage": "128GB/256GB/1TB storage, no card slot"
-	// }
 	{
 		brand: "Nokia",
 		key: "nokia_g42-12381",
