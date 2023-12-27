@@ -6,6 +6,7 @@ require("dotenv").config();
 app.use(cors());
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // for urlencoded data like form data
 
 const Route = require("./routes/Route");
 app.use("/mobiles", Route);
