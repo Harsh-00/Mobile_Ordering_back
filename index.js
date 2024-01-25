@@ -11,9 +11,9 @@ app.use(express.urlencoded({ extended: true })); // for urlencoded data like for
 const Route = require("./routes/Route");
 app.use("/mobiles", Route);
 
-app.use("/", (req, res) => {
-	return res.send("Hello World");
-});
+// app.use("/", (req, res) => {
+// 	return res.send("Hello World");
+// });
 app.listen(process.env.PORT, () => {
 	console.log("Server Started Successfully on", process.env.PORT);
 });

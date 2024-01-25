@@ -1,24 +1,39 @@
 const express = require("express");
 const router = express.Router();
 const Mobile = require("../models/Mobiles");
+const User = require("../models/User");
 const Imgdata = require("./data.js");
+
+//Login
+router.post("/login", async (req, res) => {
+	try {
+		console.log(req.body);
+		res.status(200).json({
+			success: true,
+			message: "Login Successfully",
+		});
+	} catch (error) {
+		res.status(500).json({
+			success: false,
+			message: e.message,
+		});
+	}
+});
 
 //get all mobiles
 router.get("/all", async (req, res) => {
-	{
-		try {
-			const allMob = await Mobile.find({});
-			res.status(200).json({
-				success: true,
-				info: allMob,
-				message: "All Mobiles",
-			});
-		} catch (e) {
-			res.status(500).json({
-				success: false,
-				message: e.message,
-			});
-		}
+	try {
+		const allMob = await Mobile.find({});
+		res.status(200).json({
+			success: true,
+			info: allMob,
+			message: "All Mobiles",
+		});
+	} catch (e) {
+		res.status(500).json({
+			success: false,
+			message: e.message,
+		});
 	}
 });
 
