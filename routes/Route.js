@@ -4,15 +4,87 @@ const Mobile = require("../models/Mobiles");
 const User = require("../models/User");
 const Imgdata = require("./data.js");
 
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
+//Register
+router.post("/register", async (req, res) => {
+	try {
+		const userEntry = req.body;
+		console.log(userEntry);
+
+		const pass = await bcrypt.hash(userEntry.password, 10);
+
+		userEntry.password = pass;
+
+		const user = new User(userEntry);
+		await user.save();
+		res.status(200).json({
+			success: true,
+			message: "User Added Successfully",
+		});
+	} catch (e) {
+		res.status(500).json({
+			success: false,
+			message: e.message,
+		});
+	}
+});
+
 //Login
 router.post("/login", async (req, res) => {
 	try {
 		console.log(req.body);
-		res.status(200).json({
-			success: true,
-			message: "Login Successfully",
+		const { email, password } = req.body;
+		const verifyUser = await User.findOne({ email });
+
+		console.log(verifyUser);
+
+		if (!verifyUser) {
+			res.status(404).json({
+				success: false,
+				message: "User Does Not Exist",
+			});
+			return;
+		}
+
+		const verifyPass = await bcrypt.compare(password, verifyUser.password);
+
+		if (!verifyPass) {
+			res.status(404).json({
+				success: false,
+				message: "Password Does Not Match",
+			});
+			return;
+		}
+
+		const payload = {
+			_id: verifyUser._id,
+			email: verifyUser.email,
+			role: verifyUser.role,
+			firstName: verifyUser.firstName,
+			lastName: verifyUser.lastName,
+			mobileNo: verifyUser.mobileNo,
+		};
+
+		const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, {
+			expiresIn: "10d",
 		});
-	} catch (error) {
+
+		verifyUser.password = undefined;
+
+		res.cookie("token", token, {
+			expires: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+			httpOnly: true,
+		})
+			.status(200)
+			.json({
+				success: true,
+				data: verifyUser,
+				token,
+				message: "Login Successfully",
+			});
+	} catch (e) {
 		res.status(500).json({
 			success: false,
 			message: e.message,
