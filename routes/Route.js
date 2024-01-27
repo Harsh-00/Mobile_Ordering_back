@@ -6,6 +6,7 @@ const Imgdata = require("./data.js");
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { authentication, isNotCustomer } = require("../middleware/auth.js");
 
 //Register
 router.post("/register", async (req, res) => {
@@ -41,21 +42,19 @@ router.post("/login", async (req, res) => {
 		console.log(verifyUser);
 
 		if (!verifyUser) {
-			res.status(404).json({
+			return res.status(404).json({
 				success: false,
 				message: "User Does Not Exist",
 			});
-			return;
 		}
 
 		const verifyPass = await bcrypt.compare(password, verifyUser.password);
 
 		if (!verifyPass) {
-			res.status(404).json({
+			return res.status(404).json({
 				success: false,
 				message: "Password Does Not Match",
 			});
-			return;
 		}
 
 		const payload = {
@@ -71,8 +70,7 @@ router.post("/login", async (req, res) => {
 			expiresIn: "10d",
 		});
 
-		verifyUser.password = undefined;
-
+		//just to be sure (not using anywhere)
 		res.cookie("token", token, {
 			expires: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
 			httpOnly: true,
@@ -80,7 +78,6 @@ router.post("/login", async (req, res) => {
 			.status(200)
 			.json({
 				success: true,
-				data: verifyUser,
 				token,
 				message: "Login Successfully",
 			});
@@ -93,7 +90,7 @@ router.post("/login", async (req, res) => {
 });
 
 //get all mobiles
-router.get("/all", async (req, res) => {
+router.get("/all", authentication, async (req, res) => {
 	try {
 		const allMob = await Mobile.find({});
 		res.status(200).json({
@@ -110,7 +107,7 @@ router.get("/all", async (req, res) => {
 });
 
 //post a mobile entry
-router.post("/add", async (req, res) => {
+router.post("/add", authentication, isNotCustomer, async (req, res) => {
 	try {
 		const data = req.body;
 		console.log(data);
@@ -164,11 +161,6 @@ router.get("/filter", async (req, res) => {
 
 		console.log(brandArray);
 		console.log(ramArray);
-
-		// for (let i = 0; i < filterArray.length; i++) {
-		// 	brandArray?.push(filterArray[i]?.brand);
-		// 	ramArray?.push(filterArray[i]?.ram);
-		// }
 
 		if (brandArray.length !== 0 && ramArray.length !== 0) {
 			var filterMob = await Mobile.find({
