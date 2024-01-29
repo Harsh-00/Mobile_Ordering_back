@@ -6,7 +6,11 @@ const Imgdata = require("./data.js");
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { authentication, isNotCustomer } = require("../middleware/auth.js");
+const {
+	authentication,
+	isNotCustomer,
+	isAdmin,
+} = require("../middleware/auth.js");
 
 //Register
 router.post("/register", async (req, res) => {
@@ -64,13 +68,16 @@ router.post("/login", async (req, res) => {
 			firstName: verifyUser.firstName,
 			lastName: verifyUser.lastName,
 			mobileNo: verifyUser.mobileNo,
+			cart: verifyUser.cart,
+			wishlist: verifyUser.wishlist,
 		};
 
 		const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, {
 			expiresIn: "10d",
 		});
+		verifyUser.password = undefined;
 
-		//just to be sure (not using anywhere)
+		//sending token to frontend by cookies
 		res.cookie("token", token, {
 			expires: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
 			httpOnly: true,
@@ -79,6 +86,7 @@ router.post("/login", async (req, res) => {
 			.json({
 				success: true,
 				token,
+				verifyUser,
 				message: "Login Successfully",
 			});
 	} catch (e) {
@@ -194,6 +202,126 @@ router.get("/filter", async (req, res) => {
 		});
 	}
 });
+//get wishlist of a user
+router.get("/wishlist", authentication, async (req, res) => {
+	const userInfo = await User.findOne({ _id: req.user._id }).populate(
+		"wishlist"
+	);
+
+	const list = userInfo.wishlist;
+
+	res.status(200).json({
+		success: true,
+		message: "Wishlist",
+		list,
+	});
+});
+
+//set wishlist of a user (add or remove)
+router.get("/wishlist/:key", authentication, async (req, res) => {
+	try {
+		const key = req.params.key;
+		const user = await User.findOne({ _id: req.user._id });
+
+		if (!user) {
+			return res.status(404).json({
+				success: false,
+				message: "User Not Found",
+			});
+		}
+
+		const entry = await Mobile.findOne({ key });
+
+		if (!entry) {
+			return res.status(404).json({
+				success: false,
+				message: "Mobile Not Found",
+			});
+		}
+
+		if (user.wishlist.includes(entry._id)) {
+			user.wishlist.pull(entry._id);
+			await user.save();
+
+			return res.status(200).json({
+				success: true,
+				message: "Removed from wishlist",
+			});
+		}
+
+		user.wishlist.push(entry._id);
+		await user.save();
+
+		res.status(200).json({
+			success: true,
+			message: "Added to wishlist",
+		});
+	} catch (error) {
+		res.status(500).json({
+			success: false,
+			message: error.message,
+		});
+	}
+});
+
+//get cart of a user
+router.get("/cart", authentication, async (req, res) => {
+	const userInfo = await User.findOne({ _id: req.user._id }).populate("cart");
+
+	const list = userInfo.cart;
+
+	res.status(200).json({
+		success: true,
+		message: "Cart",
+		list,
+	});
+});
+
+//set cart of a user (add or remove)
+router.get("/cart/:key", authentication, async (req, res) => {
+	try {
+		const key = req.params.key;
+		const userEntry = await User.findOne({ _id: req.user._id });
+
+		if (!userEntry) {
+			return res.status(404).json({
+				success: false,
+				message: "User Not Found",
+			});
+		}
+
+		const entry = await Mobile.findOne({ key });
+		if (!entry) {
+			return res.status(404).json({
+				success: false,
+				message: "Mobile Not Found",
+			});
+		}
+
+		if (userEntry.cart.includes(entry._id)) {
+			userEntry.cart.pull(entry._id);
+			await userEntry.save();
+
+			return res.status(200).json({
+				success: true,
+				message: "Removed from cart",
+			});
+		}
+
+		userEntry.cart.push(entry._id);
+		await userEntry.save();
+
+		res.status(200).json({
+			success: true,
+			message: "Added to cart",
+		});
+	} catch (error) {
+		res.status(500).json({
+			success: false,
+			message: error.message,
+		});
+	}
+});
 
 //get a mobile entry
 router.get("/:key", async (req, res) => {
@@ -254,7 +382,7 @@ router.put("/update/:key", async (req, res) => {
 });
 
 //delete a mobile entry
-router.delete("/delete/:key", async (req, res) => {
+router.delete("/delete/:key", authentication, async (req, res) => {
 	try {
 		const key = req.params.key;
 		const delMob = await Mobile.findOneAndDelete({ key });
