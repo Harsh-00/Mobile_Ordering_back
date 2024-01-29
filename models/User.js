@@ -30,6 +30,19 @@ const userSchema = new mongoose.Schema({
 		type: Number,
 		trim: true,
 	},
+
+	cart: [
+		{
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "Mobiles",
+		},
+	],
+	wishlist: [
+		{
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "Mobiles",
+		},
+	],
 });
 
 const User = mongoose.model("User", userSchema);
