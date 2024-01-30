@@ -7,9 +7,9 @@ function authentication(req, res, next) {
 	const token = req.headers["authorization"]?.replace("Bearer", "")?.trim();
 	console.log(token);
 	if (!token) {
-		return res.status(404).json({
+		return res.status(401).json({
 			success: false,
-			message: "Token Missing",
+			message: "Token not found",
 		});
 	}
 
@@ -28,7 +28,7 @@ function authentication(req, res, next) {
 
 function isSeller(req, res, next) {
 	if (req.user.role !== "Seller") {
-		return res.status(401).json({
+		return res.status(403).json({
 			success: false,
 			message: "Unauthorized Access",
 		});
@@ -38,7 +38,7 @@ function isSeller(req, res, next) {
 
 function isAdmin(req, res, next) {
 	if (req.user.role !== "Admin") {
-		return res.status(401).json({
+		return res.status(403).json({
 			success: false,
 			message: "Unauthorized Access",
 		});
@@ -48,7 +48,7 @@ function isAdmin(req, res, next) {
 
 function isCustomer(req, res, next) {
 	if (req.user.role !== "Customer") {
-		return res.status(401).json({
+		return res.status(403).json({
 			success: false,
 			message: "Unauthorized Access",
 		});
@@ -56,8 +56,8 @@ function isCustomer(req, res, next) {
 	next();
 }
 function isNotCustomer(req, res, next) {
-	if (req.user.role == "Customer") {
-		return res.status(401).json({
+	if (req.user.role == "Admin") {
+		return res.status(403).json({
 			success: false,
 			message: "Unauthorized Access",
 		});

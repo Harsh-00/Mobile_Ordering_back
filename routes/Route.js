@@ -46,7 +46,7 @@ router.post("/login", async (req, res) => {
 		console.log(verifyUser);
 
 		if (!verifyUser) {
-			return res.status(404).json({
+			return res.status(401).json({
 				success: false,
 				message: "User Does Not Exist",
 			});
@@ -55,7 +55,7 @@ router.post("/login", async (req, res) => {
 		const verifyPass = await bcrypt.compare(password, verifyUser.password);
 
 		if (!verifyPass) {
-			return res.status(404).json({
+			return res.status(401).json({
 				success: false,
 				message: "Password Does Not Match",
 			});
@@ -115,23 +115,21 @@ router.get("/all", authentication, async (req, res) => {
 });
 
 //post a mobile entry
-router.post("/add", authentication, isNotCustomer, async (req, res) => {
+router.post("/add", authentication, async (req, res) => {
 	try {
-		const data = req.body;
+		const { data } = req.body;
 		console.log(data);
+		console.log("h1");
 
 		if (data.brand) {
 			data.brand =
 				data.brand.charAt(0).toUpperCase() +
 				data.brand.slice(1).toLowerCase();
 		}
-		if (!data.key) {
-			const key =
-				data.mobName.replace(" ", "-").toLowerCase() +
-				"-" +
-				Math.floor(100000 + Math.random() * 900000); // random 6 digt number
-			data.key = key;
-		}
+		data.key =
+			data.mobName.replaceAll(" ", "-").toLowerCase() +
+			"-" +
+			Math.floor(100000 + Math.random() * 900000); // random 6 digt number
 
 		if (data.storage) {
 			//just for enhancing the viewing data
@@ -144,10 +142,10 @@ router.post("/add", authentication, isNotCustomer, async (req, res) => {
 			data.mobImg = image;
 			//randomly take from my data.js file
 		}
-
+		console.log("h4");
 		console.log(data);
 		const mobile = new Mobile(data);
-		console.log(mobile);
+		console.log("Mob", mobile);
 		await mobile.save();
 
 		res.status(200).json({
@@ -382,23 +380,28 @@ router.put("/update/:key", async (req, res) => {
 });
 
 //delete a mobile entry
-router.delete("/delete/:key", authentication, async (req, res) => {
-	try {
-		const key = req.params.key;
-		const delMob = await Mobile.findOneAndDelete({ key });
-		console.log(delMob);
+router.delete(
+	"/delete/:key",
+	authentication,
+	isNotCustomer,
+	async (req, res) => {
+		try {
+			const key = req.params.key;
+			const delMob = await Mobile.findOneAndDelete({ key });
+			console.log(delMob);
 
-		if (!delMob) {
-			res.status(404).json({
-				success: false,
-				message: "Mobile Not Found",
-			});
-		} else
-			res.status(200).json({
-				success: true,
-				message: "Mobile Deleted Successfully",
-			});
-	} catch (e) {}
-});
+			if (!delMob) {
+				res.status(404).json({
+					success: false,
+					message: "Mobile Not Found",
+				});
+			} else
+				res.status(200).json({
+					success: true,
+					message: "Mobile Deleted Successfully",
+				});
+		} catch (e) {}
+	}
+);
 
 module.exports = router;
