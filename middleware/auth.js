@@ -56,7 +56,7 @@ function isCustomer(req, res, next) {
 	next();
 }
 function isNotCustomer(req, res, next) {
-	if (req.user.role == "Admin") {
+	if (req.user.role == "Customer") {
 		return res.status(403).json({
 			success: false,
 			message: "Unauthorized Access",
