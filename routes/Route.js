@@ -18,13 +18,24 @@ router.post("/register", async (req, res) => {
 		const userEntry = req.body;
 		console.log(userEntry);
 
+		const emailCheck = await User.findOne({ email: userEntry.email });
+
+		if (emailCheck) {
+			return res.status(400).json({
+				success: false,
+				message: "Email Already Exists",
+			});
+		}
 		const pass = await bcrypt.hash(userEntry.password, 10);
+		console.log("h2");
 
 		userEntry.password = pass;
 
 		const user = new User(userEntry);
+
 		await user.save();
-		res.status(200).json({
+
+		return res.status(200).json({
 			success: true,
 			message: "User Added Successfully",
 		});
