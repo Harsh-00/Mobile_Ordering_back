@@ -169,7 +169,7 @@ router.get("/filter", async (req, res) => {
 		const brandArray = JSON.parse(req.query.filter);
 		const ramArray = JSON.parse(req.query.ramFilter);
 
-		// console.log(brandArray);
+		console.log(brandArray);
 		// console.log(ramArray);
 
 		if (brandArray.length !== 0 && ramArray.length !== 0) {
@@ -207,11 +207,65 @@ router.get("/filter", async (req, res) => {
 
 router.get("/filters", async (req, res) => {
 	try {
-		const brandArray = JSON.parse(req.query.brand);
-		const ramArray = JSON.parse(req.query.ram);
+		const brandArray = JSON.parse(req.query.brandFilter);
+		const ramArray = JSON.parse(req.query.ramFil);
+		const priceArray = JSON.parse(req.query.priceFilter);
+		const ratingArray = JSON.parse(req.query.ratingFilter);
 
+		console.log("me");
 		console.log(brandArray);
 		console.log(ramArray);
+		console.log(priceArray);
+		console.log(ratingArray);
+
+		let filterr = {};
+
+		if (brandArray.length !== 0) {
+			filterr.brand = { $in: brandArray };
+		}
+		  
+		if (ramArray.length !== 0) {
+			filterr.ram = { $in: ramArray };
+		}
+		
+		if (priceArray.length !== 0) {
+			const priceCriteria = priceArray.map(priceRange => {
+			  const [min, max] = priceRange.split(',').map(price => parseInt(price));
+			  return { price: { $gte: min, $lte: max } };
+			});
+
+			filterr.$or = priceCriteria;
+		}
+
+		if (ratingArray.length !== 0) {
+			filterCriteria.rating = { $in: ratingArray.map(rating => parseInt(rating)) };
+		}
+
+		const filterMob = await Mobile.find(filterr);
+
+		// if (brandArray.length !== 0 && ramArray.length !== 0) {
+		// 	var filterMob = await Mobile.find({
+		// 		$and: [
+		// 			{ brand: { $in: brandArray } },
+		// 			{ ram: { $in: ramArray } },
+		// 		],
+		// 	});
+		// } else if (brandArray.length !== 0) {
+		// 	var filterMob = await Mobile.find({ brand: { $in: brandArray } });
+		// } else if (ramArray.length !== 0) {
+		// 	var filterMob = await Mobile.find({ ram: { $in: ramArray } });
+		// }
+
+		if (!filterMob) {
+			res.status(404).json({
+				success: false,
+				message: "No Mobile Foundvgd",
+			});
+		} else
+			res.status(200).json({
+				success: true,
+				message: filterMob,
+			});
 	} catch (e) {
 		res.status(500).json({
 			success: false,
