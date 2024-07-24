@@ -237,9 +237,9 @@ router.get("/filters", async (req, res) => {
 			filterr.$or = priceCriteria;
 		}
 
-		if (ratingArray.length !== 0) {
-			filterCriteria.rating = { $in: ratingArray.map(rating => parseInt(rating)) };
-		}
+		// if (ratingArray.length !== 0) {
+		// 	filterCriteria.rating = { $in: ratingArray.map(rating => parseInt(rating)) };
+		// }
 
 		const filterMob = await Mobile.find(filterr);
 
