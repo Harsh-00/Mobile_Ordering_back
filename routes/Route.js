@@ -16,7 +16,7 @@ const {
 router.post("/register", async (req, res) => {
 	try {
 		const userEntry = req.body;
-		console.log(userEntry);
+		// console.log(userEntry);
 
 		const emailCheck = await User.findOne({ email: userEntry.email });
 
@@ -27,7 +27,6 @@ router.post("/register", async (req, res) => {
 			});
 		}
 		const pass = await bcrypt.hash(userEntry.password, 10);
-		console.log("h2");
 
 		userEntry.password = pass;
 
@@ -50,11 +49,10 @@ router.post("/register", async (req, res) => {
 //Login
 router.post("/login", async (req, res) => {
 	try {
-		console.log(req.body);
+		// console.log(req.body);
 		const { email, password } = req.body;
 		const verifyUser = await User.findOne({ email });
 
-		console.log(verifyUser);
 
 		if (!verifyUser) {
 			return res.status(401).json({
@@ -129,8 +127,7 @@ router.get("/all", authentication, async (req, res) => {
 router.post("/add", authentication, async (req, res) => {
 	try {
 		const { data } = req.body;
-		console.log(data);
-		console.log("h1");
+		// console.log(data);
 
 		if (data.brand) {
 			data.brand =
@@ -146,17 +143,13 @@ router.post("/add", authentication, async (req, res) => {
 			//just for enhancing the viewing data
 			data.storage = data.storage + " storage, microSDXC";
 		}
-		console.log(data);
 		if (!data?.mobImg) {
 			const image =
 				Imgdata[Math.floor(Math.random() * Imgdata.length)].mobImg;
 			data.mobImg = image;
 			//randomly take from my data.js file
 		}
-		console.log("h4");
-		console.log(data);
 		const mobile = new Mobile(data);
-		console.log("Mob", mobile);
 		await mobile.save();
 
 		res.status(200).json({
@@ -176,8 +169,8 @@ router.get("/filter", async (req, res) => {
 		const brandArray = JSON.parse(req.query.filter);
 		const ramArray = JSON.parse(req.query.ramFilter);
 
-		console.log(brandArray);
-		console.log(ramArray);
+		// console.log(brandArray);
+		// console.log(ramArray);
 
 		if (brandArray.length !== 0 && ramArray.length !== 0) {
 			var filterMob = await Mobile.find({
@@ -192,7 +185,7 @@ router.get("/filter", async (req, res) => {
 			var filterMob = await Mobile.find({ ram: { $in: ramArray } });
 		}
 
-		console.log(filterMob);
+		// console.log(filterMob);
 
 		if (!filterMob) {
 			res.status(404).json({
@@ -204,6 +197,21 @@ router.get("/filter", async (req, res) => {
 				success: true,
 				message: filterMob,
 			});
+	} catch (e) {
+		res.status(500).json({
+			success: false,
+			message: e.message,
+		});
+	}
+});
+
+router.get("/filters", async (req, res) => {
+	try {
+		const brandArray = JSON.parse(req.query.brand);
+		const ramArray = JSON.parse(req.query.ram);
+
+		console.log(brandArray);
+		console.log(ramArray);
 	} catch (e) {
 		res.status(500).json({
 			success: false,
@@ -336,7 +344,7 @@ router.get("/cart/:key", authentication, async (req, res) => {
 router.get("/:key", async (req, res) => {
 	try {
 		const key = req.params.key;
-		console.log(key);
+		// console.log(key);
 		const mobFind = await Mobile.findOne({ key });
 
 		if (!mobFind) {
@@ -361,10 +369,10 @@ router.get("/:key", async (req, res) => {
 router.put("/update/:key", async (req, res) => {
 	try {
 		const key = req.params.key;
-		console.log(key);
+		// console.log(key);
 
 		const mobFind = await Mobile.findOne({ key });
-		console.log(mobFind);
+		// console.log(mobFind);
 
 		if (!mobFind) {
 			res.status(404).json({
@@ -376,7 +384,7 @@ router.put("/update/:key", async (req, res) => {
 		const mobUpdate = await Mobile.findOneAndUpdate({ key }, req.body, {
 			new: true,
 		});
-		console.log(mobUpdate);
+		// console.log(mobUpdate);
 
 		res.status(200).json({
 			success: true,
@@ -399,7 +407,7 @@ router.delete(
 		try {
 			const key = req.params.key;
 			const delMob = await Mobile.findOneAndDelete({ key });
-			console.log(delMob);
+			// console.log(delMob);
 
 			if (!delMob) {
 				res.status(404).json({
