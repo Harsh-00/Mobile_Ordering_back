@@ -228,33 +228,37 @@ router.get("/filters", async (req, res) => {
 			filterr.ram = { $in: ramArray };
 		}
 		
+		let priceCriteria = [];
 		if (priceArray.length !== 0) {
-			const priceCriteria = priceArray.map(priceRange => {
-			  const [min, max] = priceRange.split(',').map(price => parseInt(price));
-			  return { price: { $gte: min, $lte: max } };
+			priceCriteria = priceArray.map(priceRange => {
+				const [min, max] = priceRange.split(',').map(price => parseInt(price, 10));
+				return { price: { $gte: min, $lte: max } };
 			});
-
+		}
+	
+		let ratingCriteria = [];
+        if (ratingArray.length !== 0) {
+            ratingCriteria = ratingArray.map((rating) => {
+                const parsedRating = parseFloat(rating);
+                return {
+                    rating: { $gte: parsedRating, $lt: parsedRating + 1 },
+                };
+            });
+        }
+	
+		// Combine Price and Rating Criteria
+		if (priceCriteria.length !== 0 && ratingCriteria.length !== 0) {
+			filterr.$and = [
+				{ $or: priceCriteria },
+				{ $or: ratingCriteria }
+			];
+		} else if (priceCriteria.length !== 0) {
 			filterr.$or = priceCriteria;
+		} else if (ratingCriteria.length !== 0) {
+			filterr.$or = ratingCriteria;
 		}
 
-		// if (ratingArray.length !== 0) {
-		// 	filterCriteria.rating = { $in: ratingArray.map(rating => parseInt(rating)) };
-		// }
-
 		const filterMob = await Mobile.find(filterr);
-
-		// if (brandArray.length !== 0 && ramArray.length !== 0) {
-		// 	var filterMob = await Mobile.find({
-		// 		$and: [
-		// 			{ brand: { $in: brandArray } },
-		// 			{ ram: { $in: ramArray } },
-		// 		],
-		// 	});
-		// } else if (brandArray.length !== 0) {
-		// 	var filterMob = await Mobile.find({ brand: { $in: brandArray } });
-		// } else if (ramArray.length !== 0) {
-		// 	var filterMob = await Mobile.find({ ram: { $in: ramArray } });
-		// }
 
 		if (!filterMob) {
 			res.status(404).json({
