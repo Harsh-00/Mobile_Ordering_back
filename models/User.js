@@ -43,6 +43,13 @@ const userSchema = new mongoose.Schema({
 			ref: "Mobiles",
 		},
 	],
+
+	orders: [
+		{
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "Orders",
+		},
+	],
 });
 
 const User = mongoose.model("User", userSchema);
