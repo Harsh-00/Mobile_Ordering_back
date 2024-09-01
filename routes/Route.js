@@ -3,6 +3,7 @@ const router = express.Router();
 const Mobile = require("../models/Mobiles");
 const User = require("../models/User");
 const Imgdata = require("./data.js");
+const Order = require("../models/Orders");
 
 require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
@@ -168,10 +169,18 @@ router.post("/add", authentication, async (req, res) => {
 
 //stripe checkout
 router.post("/checkout", async (req, res) => {
-    const { products, amount } = req.body;
+    const { products, amount,userId } = req.body;
     console.log(products);
 
     try {
+
+        newOrder = await Order.create({
+            userId, // Associate with the user
+            products,
+            totalAmount: amount,
+            status: 'Pending', // Set initial status to 'Pending'
+        });
+
         const line_items = products.map((product) => ({
             price_data: {
                 currency: 'usd',
@@ -188,9 +197,15 @@ router.post("/checkout", async (req, res) => {
             payment_method_types: ['card'],
             line_items,
             mode: 'payment',
-            success_url: 'http://localhost:3000/success',
+            success_url: 'http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}',
             cancel_url: 'http://localhost:3000/failed',
         });
+
+        // Update the order with the Stripe session ID
+        await Order.findByIdAndUpdate(newOrder._id, { 
+            stripeSessionId: session.id,
+            status: 'Pending', // Set status to Pending while waiting for payment
+        }, { new: true });
 
         console.log(session);
         console.log(session.id);
@@ -201,6 +216,11 @@ router.post("/checkout", async (req, res) => {
         });
     } catch (error) {
         console.error('Error creating Stripe session:', error);
+
+        if (newOrder) {
+            await Order.findByIdAndUpdate(newOrder?._id, { status: 'Failed' }, { new: true });
+        }
+
         res.status(500).json({
             success: false,
             error: error.message,
