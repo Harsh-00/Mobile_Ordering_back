@@ -15,6 +15,7 @@ const {
     isNotCustomer,
     isAdmin,
 } = require("../middleware/auth.js");
+const data = require("./data.js");
 
 //Register
 router.post("/register", async (req, res) => {
@@ -170,7 +171,8 @@ router.post("/add", authentication, async (req, res) => {
 //stripe checkout
 router.post("/checkout", async (req, res) => {
     const { products, amount,userId } = req.body;
-    console.log(products);
+    // console.log(products);
+    let newOrder;
 
     try {
 
@@ -180,6 +182,9 @@ router.post("/checkout", async (req, res) => {
             totalAmount: amount,
             status: 'Pending', // Set initial status to 'Pending'
         });
+
+        //link this order with user
+        await User.findByIdAndUpdate(userId, { $push: { orders: newOrder._id } });
 
         const line_items = products.map((product) => ({
             price_data: {
@@ -197,15 +202,18 @@ router.post("/checkout", async (req, res) => {
             payment_method_types: ['card'],
             line_items,
             mode: 'payment',
-            success_url: process.env.STRIPE_SUCCESS_URL + `?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url:  process.env.STRIPE_FAILED_URL,
+            success_url: process.env.FRONT_URL + `/success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: process.env.FRONT_URL + `/failed?session_id={CHECKOUT_SESSION_ID}`,
         });
+
+        console.log(session);
 
         // Update the order with the Stripe session ID
         await Order.findByIdAndUpdate(newOrder._id, { 
-            stripeSessionId: session.id,
-            status: 'Pending', // Set status to Pending while waiting for payment
+            stripeSessionId: session.id, 
         }, { new: true });
+
+        
 
         console.log(session);
         console.log(session.id);
@@ -227,6 +235,73 @@ router.post("/checkout", async (req, res) => {
         });
     }
 });
+
+router.get('/success',async(req,res)=>{
+    try{
+        const id=req.query.session_id;
+        
+        const check=await Order.findOneAndUpdate({stripeSessionId:id},{status:"Complete",createdAt:Date.now()},{new:true});
+         
+
+    }
+    catch(e)
+    {
+
+    }
+})
+
+router.get('/failed',async(req,res)=>{
+    try{
+        const id=req.query.session_id;
+        
+        const check=await Order.findOneAndUpdate({stripeSessionId:id},{status:"Failed",createdAt:Date.now()},{new:true}); 
+
+    }
+    catch(e)
+    {
+
+    }
+})
+
+router.get('/orders/user/:id',async(req,res)=>{
+    try{
+        const id=req.params.id;
+        const order=await User.findOne({_id:id}).populate('orders') ;
+
+        //sort by latest order
+        order.orders.sort((a,b)=>b.createdAt-a.createdAt);
+
+        res.status(200).json({
+            success:true,
+            message:order.orders
+        })  
+    }
+    catch(e)
+    {
+        res.status(500).json({
+            success:false,
+            message:e.message
+        })
+
+    }
+})
+
+router.get('/orders',async(req,res)=>{
+    try{
+        const orders=await Order.find({}).sort({createdAt:-1});
+        res.status(200).json({
+            success:true,
+            message:orders
+        })
+    }
+    catch(e)
+    {
+        res.status(500).json({
+            success:false,
+            message:e.message
+        })
+    }
+})
 
 //get filtered mobile
 router.get("/filter", async (req, res) => {
