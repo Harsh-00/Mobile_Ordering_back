@@ -59,7 +59,7 @@ const mobileSchema = new mongoose.Schema({
 	},
 	chipset: {
 		type: String,
-		default: "Apple A15 Bionic",
+		default: "Snapdragon ",
 	},
 	batteryType: {
 		type: String,
@@ -81,7 +81,16 @@ const mobileSchema = new mongoose.Schema({
 		type: String,
 		default: "1284x2778 pixels",
 	},
-});
+	rating:{
+		type: Number,
+		default: 1.0,
+	},
+	review: {
+		type: Array,
+		default: 100,
+	},
+	}
+);
 
 //      brand: "Apple",
 // 		key: "apple_iphone_13_pro_max-11089",
