@@ -128,7 +128,7 @@ router.get("/all", authentication, async (req, res) => {
 });
 
 //post a mobile entry
-router.post("/add", authentication, async (req, res) => {
+router.post("/add", authentication,isNotCustomer, async (req, res) => {
     try {
         const { data } = req.body;
         // console.log(data);
@@ -599,7 +599,7 @@ router.put("/update/:key", async (req, res) => {
 router.delete(
     "/delete/:key",
     authentication,
-    isNotCustomer,
+    isAdmin,
     async (req, res) => {
         try {
             const key = req.params.key;
