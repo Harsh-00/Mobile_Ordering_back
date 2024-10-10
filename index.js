@@ -8,7 +8,7 @@ const port=process.env.PORT || 5000;
 
 // app.use(cors());
 app.use(cors({
-	origin: 'https://mobile-ordering-front.vercel.app',
+	origin: process.env.FRONT_URL,
 	methods: ['GET', 'POST', 'PUT', 'DELETE'], 
 	credentials: true,
   }));
