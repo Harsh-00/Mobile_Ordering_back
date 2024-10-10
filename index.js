@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
+const path=require('path');
 
 
 app.use(cors());
@@ -15,6 +16,10 @@ app.use("/mobiles", Route);
 app.use("/", (req, res) => {
 	return res.send("Welcome to Backend Server of Book My Phone");
 });
+
+// production script for Azure 
+
+
 app.listen(process.env.PORT, () => {
 	console.log("Server Started Successfully on", process.env.PORT);
 });
