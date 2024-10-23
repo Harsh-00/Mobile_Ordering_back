@@ -50,6 +50,12 @@ const userSchema = new mongoose.Schema({
 			ref: "Orders",
 		},
 	],
+	compare:[
+		{
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "Mobiles",
+		},
+	],	
 });
 
 const User = mongoose.model("User", userSchema);
