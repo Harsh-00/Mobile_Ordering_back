@@ -2,10 +2,8 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 //verifies token passed in header
-function authentication(req, res, next) {
-	// console.log(req.headers);
-	const token = req.headers["authorization"]?.replace("Bearer", "")?.trim();
-	// console.log(token);
+function authentication(req, res, next) { 
+	const token = req.headers["authorization"]?.replace("Bearer", "")?.trim(); 
 	if (!token) {
 		return res.status(401).json({
 			success: false,
@@ -14,8 +12,7 @@ function authentication(req, res, next) {
 	}
 
 	try {
-		const decode = jwt.verify(token, process.env.JWT_SECRET_KEY);
-		// console.log("YESSS-> ", decode);
+		const decode = jwt.verify(token, process.env.JWT_SECRET_KEY); 
 		req.user = decode;
 	} catch (error) {
 		return res.status(401).json({

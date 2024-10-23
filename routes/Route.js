@@ -20,8 +20,7 @@ const data = require("./data.js");
 //Register
 router.post("/register", async (req, res) => {
     try {
-        const userEntry = req.body;
-        // console.log(userEntry);
+        const userEntry = req.body; 
 
         const emailCheck = await User.findOne({ email: userEntry.email });
 
@@ -53,8 +52,7 @@ router.post("/register", async (req, res) => {
 
 //Login
 router.post("/login", async (req, res) => {
-    try {
-        // console.log(req.body);
+    try { 
         const { email, password } = req.body;
         const verifyUser = await User.findOne({ email });
 
@@ -83,6 +81,7 @@ router.post("/login", async (req, res) => {
             mobileNo: verifyUser.mobileNo,
             cart: verifyUser.cart,
             wishlist: verifyUser.wishlist,
+            compare: verifyUser.compare,
         };
 
         const token = jwt.sign(payload, process.env.JWT_SECRET_KEY, {
@@ -127,11 +126,12 @@ router.get("/all", authentication, async (req, res) => {
     }
 });
 
+
+
 //post a mobile entry
 router.post("/add", authentication,isNotCustomer, async (req, res) => {
     try {
-        const { data } = req.body;
-        // console.log(data);
+        const { data } = req.body; 
 
         if (data.brand) {
             data.brand =
@@ -170,8 +170,7 @@ router.post("/add", authentication,isNotCustomer, async (req, res) => {
 
 //stripe checkout
 router.post("/checkout", async (req, res) => {
-    const { products, amount,userId } = req.body;
-    // console.log(products);
+    const { products, amount,userId } = req.body; 
     let newOrder;
 
     try {
@@ -204,26 +203,19 @@ router.post("/checkout", async (req, res) => {
             mode: 'payment',
             success_url: process.env.FRONT_URL + `/success?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: process.env.FRONT_URL + `/failed?session_id={CHECKOUT_SESSION_ID}`,
-        });
-
-        console.log(session);
+        }); 
 
         // Update the order with the Stripe session ID
         await Order.findByIdAndUpdate(newOrder._id, { 
             stripeSessionId: session.id, 
         }, { new: true });
 
-        
-
-        console.log(session);
-        console.log(session.id);
         res.status(200).json({
             success: true,
             message: session,
             id: session.id,
         });
-    } catch (error) {
-        console.error('Error creating Stripe session:', error);
+    } catch (error) { 
 
         if (newOrder) {
             await Order.findByIdAndUpdate(newOrder?._id, { status: 'Failed' }, { new: true });
@@ -309,9 +301,6 @@ router.get("/filter", async (req, res) => {
         const brandArray = JSON.parse(req.query.filter);
         const ramArray = JSON.parse(req.query.ramFilter);
 
-        console.log(brandArray);
-        // console.log(ramArray);
-
         if (brandArray.length !== 0 && ramArray.length !== 0) {
             var filterMob = await Mobile.find({
                 $and: [
@@ -324,9 +313,7 @@ router.get("/filter", async (req, res) => {
         } else if (ramArray.length !== 0) {
             var filterMob = await Mobile.find({ ram: { $in: ramArray } });
         }
-
-        // console.log(filterMob);
-
+ 
         if (!filterMob) {
             res.status(404).json({
                 success: false,
@@ -351,12 +338,7 @@ router.get("/filters", async (req, res) => {
         const ramArray = JSON.parse(req.query.ramFil);
         const priceArray = JSON.parse(req.query.priceFilter);
         const ratingArray = JSON.parse(req.query.ratingFilter);
-
-        console.log("me");
-        console.log(brandArray);
-        console.log(ramArray);
-        console.log(priceArray);
-        console.log(ratingArray);
+ 
 
         let filterr = {};
 
@@ -416,6 +398,111 @@ router.get("/filters", async (req, res) => {
         });
     }
 });
+
+//get compare list
+router.get("/compare",authentication,async(req,res)=>{
+    try {
+        const tmp=await User.findOne({_id:req.user._id})?.populate('compare');
+        const compList=tmp?.compare;
+        
+        if(compList?.length==0)
+        {
+            return res.status(404).json({
+                success:false,
+                message:"No Mobiles to compare"
+            })
+        }
+
+        if(!tmp)
+        {
+            return res.status(404).json({
+                success:false,
+                message:"User Not Found"
+            })
+        }
+
+        res.status(200).json({
+            success:true,
+            message:"Compare List",
+            list:compList
+        })
+    } catch (error) {
+        res.status(500).json({
+            success:false,
+            message:error.message
+        })
+    }
+})   
+
+//add mobiles to compare (at most 4 at a time)
+router.get("/compare/:key",authentication,async(req,res)=>{
+    try {
+        const mob=req.params.key;
+        const user=await User.findOne({_id:req.user._id});
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User Not Found",
+            });
+        }
+
+        
+
+        const entry=await Mobile.findOne({ key: mob });
+
+        if(user?.compare?.length>=4 && !user?.compare.includes(entry._id))
+            {
+                return res.status(404).json({
+                    success: false,
+                    message: "Cannot compare more than 4 mobiles",
+                });
+            }
+
+        if(!entry)
+        {
+            return res.status(404).json({
+                success: false,
+                message: "Mobile Not Found",
+            });
+        }
+
+        if(user?.compare.includes(entry._id))
+        {
+            user.compare.pull(entry._id);
+            await user.save();
+
+            return res.status(200).json({
+                success: true,
+                message: "Removed from compare",
+            })
+        }
+
+        if(user?.compare?.length>=4)
+        {
+            return res.status(404).json({
+                success: false,
+                message: "Cannot compare more than 4 mobiles",
+            });
+        }
+
+        user.compare.push(entry._id);
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Added to compare",
+        });
+        
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+})
+
+
 //get wishlist of a user
 router.get("/wishlist", authentication, async (req, res) => {
     const userInfo = await User.findOne({ _id: req.user._id }).populate(
@@ -540,8 +627,7 @@ router.get("/cart/:key", authentication, async (req, res) => {
 //get a mobile entry
 router.get("/:key", async (req, res) => {
     try {
-        const key = req.params.key;
-        // console.log(key);
+        const key = req.params.key; 
         const mobFind = await Mobile.findOne({ key });
 
         if (!mobFind) {
@@ -565,11 +651,9 @@ router.get("/:key", async (req, res) => {
 //update a mobile entry
 router.put("/update/:key", async (req, res) => {
     try {
-        const key = req.params.key;
-        // console.log(key);
+        const key = req.params.key; 
 
-        const mobFind = await Mobile.findOne({ key });
-        // console.log(mobFind);
+        const mobFind = await Mobile.findOne({ key }); 
 
         if (!mobFind) {
             res.status(404).json({
@@ -580,8 +664,7 @@ router.put("/update/:key", async (req, res) => {
 
         const mobUpdate = await Mobile.findOneAndUpdate({ key }, req.body, {
             new: true,
-        });
-        // console.log(mobUpdate);
+        }); 
 
         res.status(200).json({
             success: true,
@@ -603,8 +686,7 @@ router.delete(
     async (req, res) => {
         try {
             const key = req.params.key;
-            const delMob = await Mobile.findOneAndDelete({ key });
-            // console.log(delMob);
+            const delMob = await Mobile.findOneAndDelete({ key }); 
 
             if (!delMob) {
                 res.status(404).json({
