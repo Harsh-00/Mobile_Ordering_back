@@ -296,42 +296,6 @@ router.get('/orders',async(req,res)=>{
 })
 
 //get filtered mobile
-router.get("/filter", async (req, res) => {
-    try {
-        const brandArray = JSON.parse(req.query.filter);
-        const ramArray = JSON.parse(req.query.ramFilter);
-
-        if (brandArray.length !== 0 && ramArray.length !== 0) {
-            var filterMob = await Mobile.find({
-                $and: [
-                    { brand: { $in: brandArray } },
-                    { ram: { $in: ramArray } },
-                ],
-            });
-        } else if (brandArray.length !== 0) {
-            var filterMob = await Mobile.find({ brand: { $in: brandArray } });
-        } else if (ramArray.length !== 0) {
-            var filterMob = await Mobile.find({ ram: { $in: ramArray } });
-        }
- 
-        if (!filterMob) {
-            res.status(404).json({
-                success: false,
-                message: "No Mobile Foundvgd",
-            });
-        } else
-            res.status(200).json({
-                success: true,
-                message: filterMob,
-            });
-    } catch (e) {
-        res.status(500).json({
-            success: false,
-            message: e.message,
-        });
-    }
-});
-
 router.get("/filters", async (req, res) => {
     try {
         const brandArray = JSON.parse(req.query.brandFilter);
