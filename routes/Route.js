@@ -110,7 +110,7 @@ router.post("/login", async (req, res) => {
 });
 
 //get all mobiles
-router.get("/all", authentication, async (req, res) => {
+router.get("/mobiles/all", authentication, async (req, res) => {
     try {
         const allMob = await Mobile.find({});
         res.status(200).json({
@@ -126,10 +126,36 @@ router.get("/all", authentication, async (req, res) => {
     }
 });
 
+//get mobile by id
+router.get("/mobiles/:id", async (req, res) => {
+    try {
+        const id = req.params.id;
+        const mob = await Mobile.findOne({key:id});
+
+        if (!mob) {
+            res.status(404).json({
+                success: false,
+                message: "Mobile Not Found",
+            });
+            return;
+        }
+        res.status(200).json({
+            success: true,
+            info: mob,
+            message: "Specific Mobile",
+        });
+    } catch (e) {
+        res.status(500).json({
+            success: false,
+            message: e.message,
+        });
+    }
+});
+
 
 
 //post a mobile entry
-router.post("/add", authentication,isNotCustomer, async (req, res) => {
+router.post("/mobiles/add", authentication,isNotCustomer, async (req, res) => {
     try {
         const { data } = req.body; 
 
@@ -680,7 +706,7 @@ router.put("/update/:key", async (req, res) => {
 
 //delete a mobile entry
 router.delete(
-    "/delete/:key",
+    "/mobiles/delete/:key",
     authentication,
     isAdmin,
     async (req, res) => {
