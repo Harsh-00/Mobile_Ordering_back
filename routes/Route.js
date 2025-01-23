@@ -4,6 +4,8 @@ const Mobile = require("../models/Mobiles");
 const User = require("../models/User");
 const Imgdata = require("./data.js");
 const Order = require("../models/Orders");
+const rateLimit = require('express-rate-limit');
+const { successResponse, errorResponse } = require('../utils/responseHandler');
 
 require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
@@ -15,38 +17,36 @@ const {
     isNotCustomer,
     isAdmin,
 } = require("../middleware/auth.js");
-const data = require("./data.js");
+
+// Rate limiting per route
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    message: 'Too many login attempts, please try again later'
+});
+
+// Apply rate limiting to auth routes
+router.use('/login', authLimiter);
+router.use('/register', authLimiter);
 
 //Register
 router.post("/register", async (req, res) => {
     try {
-        const userEntry = req.body; 
-
+        const userEntry = req.body;
         const emailCheck = await User.findOne({ email: userEntry.email });
 
-        if (emailCheck) {
-            return res.status(400).json({
-                success: false,
-                message: "Email Already Exists",
-            });
-        }
-        const pass = await bcrypt.hash(userEntry.password, 10);
+        if (emailCheck) 
+            return errorResponse(res,null,'Email Already Exists', 403);
 
+        const pass = await bcrypt.hash(userEntry.password, 10);
         userEntry.password = pass;
 
         const user = new User(userEntry);
-
         await user.save();
 
-        return res.status(200).json({
-            success: true,
-            message: "User Added Successfully",
-        });
+        return successResponse(res,null,"User Added Successfully");
     } catch (e) {
-        res.status(500).json({
-            success: false,
-            message: e.message,
-        });
+        return errorResponse(res, e);
     }
 });
 
@@ -56,21 +56,12 @@ router.post("/login", async (req, res) => {
         const { email, password } = req.body;
         const verifyUser = await User.findOne({ email });
 
-        if (!verifyUser) {
-            return res.status(401).json({
-                success: false,
-                message: "User Does Not Exist",
-            });
-        }
-
+        if (!verifyUser) 
+            return errorResponse(res,null,"User Does Not Exist",403);
+        
         const verifyPass = await bcrypt.compare(password, verifyUser.password);
-
-        if (!verifyPass) {
-            return res.status(401).json({
-                success: false,
-                message: "Password Does Not Match",
-            });
-        }
+        if (!verifyPass) 
+            return errorResponse(res,null,"Password Does Not Match",401);
 
         const payload = {
             _id: verifyUser._id,
@@ -102,55 +93,36 @@ router.post("/login", async (req, res) => {
                 message: "Login Successfully",
             });
     } catch (e) {
-        res.status(500).json({
-            success: false,
-            message: e.message,
-        });
+        return errorResponse(res, e);
     }
 });
 
-//get all mobiles
-router.get("/mobiles/all", authentication, async (req, res) => {
-    try {
-        const allMob = await Mobile.find({});
-        res.status(200).json({
-            success: true,
-            info: allMob,
-            message: "All Mobiles",
-        });
-    } catch (e) {
-        res.status(500).json({
-            success: false,
-            message: e.message,
-        });
-    }
-});
+// Paginated mobile list
+// router.get("/mobiles/all", authentication, async (req, res) => {
+//     try {
+//         const page = parseInt(req.query.page) || 1;
+//         const limit = parseInt(req.query.limit) || 10;
+//         const skip = (page - 1) * limit;
 
-//get mobile by id
-router.get("/mobiles/:id", async (req, res) => {
-    try {
-        const id = req.params.id;
-        const mob = await Mobile.findOne({key:id});
+//         const [allMob, total] = await Promise.all([
+//             Mobile.find({})
+//                 .skip(skip)
+//                 .limit(limit)
+//                 .lean(),
+//             Mobile.countDocuments()
+//         ]);
 
-        if (!mob) {
-            res.status(404).json({
-                success: false,
-                message: "Mobile Not Found",
-            });
-            return;
-        }
-        res.status(200).json({
-            success: true,
-            info: mob,
-            message: "Specific Mobile",
-        });
-    } catch (e) {
-        res.status(500).json({
-            success: false,
-            message: e.message,
-        });
-    }
-});
+//         return successResponse(res,allMob,'Mobiles retrieved successfully',200, {
+//             pagination: {
+//                 currentPage: page,
+//                 totalPages: Math.ceil(total / limit),
+//                 totalItems: total
+//             }
+//         });
+//     } catch (e) {
+//         return errorResponse(res, e);
+//     }
+// });
 
 
 
@@ -182,17 +154,40 @@ router.post("/mobiles/add", authentication,isNotCustomer, async (req, res) => {
         const mobile = new Mobile(data);
         await mobile.save();
 
-        res.status(200).json({
-            success: true,
-            message: "Mobile Added Successfully",
-        });
+        return successResponse(res,null,"Mobile Added Successfully");
     } catch (e) {
-        res.status(500).json({
-            success: false,
-            message: e.message,
-        });
+        return errorResponse(res, e);
     }
 });
+
+//get brands and ram
+router.get("/mobiles/filters", async (req, res) => {
+    try {
+        const brands = await Mobile.distinct("brand");
+        const ram = await Mobile.distinct("ram");
+        console.log(brands, ram);
+
+        return successResponse(res,{ brands, ram },"Distinct Brands and RAM");
+    } catch (e) {
+        return errorResponse(res, e);
+    }
+});
+
+//get mobile by id
+router.get("/mobiles/:id", async (req, res) => {
+    try {
+        const id = req.params.id;
+        const mob = await Mobile.findOne({key:id});
+
+        if (!mob) 
+            return errorResponse(res,null, "Mobile Not Found" , 404);
+
+        return successResponse(res,mob,"Specific Mobile");
+    } catch (e) {
+        return errorResponse(res, e);
+    }
+});
+
 
 //stripe checkout
 router.post("/checkout", async (req, res) => {
@@ -236,48 +231,40 @@ router.post("/checkout", async (req, res) => {
             stripeSessionId: session.id, 
         }, { new: true });
 
-        res.status(200).json({
-            success: true,
-            message: session,
-            id: session.id,
-        });
+        return successResponse(res,session.id,"Order Completed");
     } catch (error) { 
 
         if (newOrder) {
             await Order.findByIdAndUpdate(newOrder?._id, { status: 'Failed' }, { new: true });
         }
 
-        res.status(500).json({
-            success: false,
-            error: error.message,
-        });
+        return errorResponse(res, error);
     }
 });
 
 router.get('/success',async(req,res)=>{
     try{
         const id=req.query.session_id;
-        
-        const check=await Order.findOneAndUpdate({stripeSessionId:id},{status:"Complete",createdAt:Date.now()},{new:true});
-         
+        await Order.findOneAndUpdate({stripeSessionId:id},{status:"Complete",createdAt:Date.now()},{new:true});
 
+        return successResponse(res,null, "Order Completed");
     }
     catch(e)
     {
-
+        return errorResponse(res, e);
     }
 })
 
 router.get('/failed',async(req,res)=>{
     try{
         const id=req.query.session_id;
-        
-        const check=await Order.findOneAndUpdate({stripeSessionId:id},{status:"Failed",createdAt:Date.now()},{new:true}); 
+        await Order.findOneAndUpdate({stripeSessionId:id},{status:"Failed",createdAt:Date.now()},{new:true}); 
 
+        return successResponse(res,null, "Order Failed");
     }
     catch(e)
     {
-
+        return errorResponse(res, e);
     }
 })
 
@@ -289,139 +276,98 @@ router.get('/orders/user/:id',async(req,res)=>{
         //sort by latest order
         order.orders.sort((a,b)=>b.createdAt-a.createdAt);
 
-        res.status(200).json({
-            success:true,
-            message:order.orders
-        })  
+        return successResponse(res,order.orders,"User Orders");
     }
     catch(e)
     {
-        res.status(500).json({
-            success:false,
-            message:e.message
-        })
-
+        return errorResponse(res, e);
     }
 })
 
 router.get('/orders',async(req,res)=>{
     try{
         const orders=await Order.find({}).sort({createdAt:-1});
-        res.status(200).json({
-            success:true,
-            message:orders
-        })
+        return successResponse(res,orders,"All Orders");
     }
     catch(e)
     {
-        res.status(500).json({
-            success:false,
-            message:e.message
-        })
+        return errorResponse(res, e);
     }
 })
 
-//get filtered mobile
-router.get("/filter", async (req, res) => {
-    try {
-        const brandArray = JSON.parse(req.query.filter);
-        const ramArray = JSON.parse(req.query.ramFilter);
-
-        if (brandArray.length !== 0 && ramArray.length !== 0) {
-            var filterMob = await Mobile.find({
-                $and: [
-                    { brand: { $in: brandArray } },
-                    { ram: { $in: ramArray } },
-                ],
-            });
-        } else if (brandArray.length !== 0) {
-            var filterMob = await Mobile.find({ brand: { $in: brandArray } });
-        } else if (ramArray.length !== 0) {
-            var filterMob = await Mobile.find({ ram: { $in: ramArray } });
-        }
- 
-        if (!filterMob) {
-            res.status(404).json({
-                success: false,
-                message: "No Mobile Foundvgd",
-            });
-        } else
-            res.status(200).json({
-                success: true,
-                message: filterMob,
-            });
-    } catch (e) {
-        res.status(500).json({
-            success: false,
-            message: e.message,
-        });
-    }
-});
-
 router.get("/filters", async (req, res) => {
     try {
-        const brandArray = JSON.parse(req.query.brandFilter);
-        const ramArray = JSON.parse(req.query.ramFil);
-        const priceArray = JSON.parse(req.query.priceFilter);
-        const ratingArray = JSON.parse(req.query.ratingFilter);
- 
 
-        let filterr = {};
+        // Pagination 
+        const page = parseInt(req?.query?.page) || 1;
+        const limit = parseInt(req?.query?.limit) || 10;
+        const skip = (page - 1) * limit;
 
-        if (brandArray.length !== 0) {
-            filterr.brand = { $in: brandArray };
-        }
+        const brandArray = req?.query?.brandFilter ? JSON.parse(req.query.brandFilter):[];
+        const ramArray = req?.query?.ramFil ? JSON.parse(req.query.ramFil):[];
+        const priceArray = req?.query?.priceFilter ? JSON.parse(req.query.priceFilter):[];
+        const ratingArray = req?.query?.ratingFilter ? JSON.parse(req.query.ratingFilter):[];
 
-        if (ramArray.length !== 0) {
-            filterr.ram = { $in: ramArray };
-        }
+        const sortBy= req?.query?.sortBy ? req?.query?.sortBy : null;
+        const sortOrder= req?.query?.sortOrder==='asc' ? 1 : -1;
+
+        const sortOption = {};
+        if(sortBy)
+            sortOption[sortBy] = sortOrder;
+            
+
+        let filter = {};
+
+        if (brandArray.length > 0) 
+            filter.brand = { $in: brandArray };
+        
+        if (ramArray.length > 0) 
+            filter.ram = { $in: ramArray };
+        
 
         let priceCriteria = [];
-        if (priceArray.length !== 0) {
+        if (priceArray.length > 0) {
             priceCriteria = priceArray.map((priceRange) => {
-                const [min, max] = priceRange
-                    .split(",")
-                    .map((price) => parseInt(price, 10));
+                const [min, max] = priceRange.split(",").map((price) => parseInt(price, 10));
                 return { price: { $gte: min, $lte: max } };
             });
         }
 
         let ratingCriteria = [];
-        if (ratingArray.length !== 0) {
+        if (ratingArray.length > 0) {
             ratingCriteria = ratingArray.map((rating) => {
                 const parsedRating = parseFloat(rating);
-                return {
-                    rating: { $gte: parsedRating, $lt: parsedRating + 1 },
-                };
+                return { rating: { $gte: parsedRating, $lt: parsedRating + 1 }};
             });
         }
 
         // Combine Price and Rating Criteria
-        if (priceCriteria.length !== 0 && ratingCriteria.length !== 0) {
-            filterr.$and = [{ $or: priceCriteria }, { $or: ratingCriteria }];
-        } else if (priceCriteria.length !== 0) {
-            filterr.$or = priceCriteria;
-        } else if (ratingCriteria.length !== 0) {
-            filterr.$or = ratingCriteria;
-        }
+        if (priceCriteria.length > 0 && ratingCriteria.length > 0) 
+            filter.$and = [{ $or: priceCriteria }, { $or: ratingCriteria }];
+        else if (priceCriteria.length > 0) 
+            filter.$or = priceCriteria;
+        else if (ratingCriteria.length > 0) 
+            filter.$or = ratingCriteria;
+        
 
-        const filterMob = await Mobile.find(filterr);
+        const [mobiles, total] = await Promise.all([
+            Mobile.find(filter).sort(sortOption).skip(skip).limit(limit).lean(),
+            Mobile.countDocuments(filter)
+        ]);
 
-        if (!filterMob) {
-            res.status(404).json({
-                success: false,
-                message: "No Mobile Foundvgd",
-            });
-        } else
-            res.status(200).json({
-                success: true,
-                message: filterMob,
-            });
-    } catch (e) {
-        res.status(500).json({
-            success: false,
-            message: e.message,
+        if (!mobiles) 
+            return errorResponse(res, null, 'No Mobile Found', 404);
+
+        return successResponse(res,mobiles,"Mobiles retrieved successfully",200, {
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(total / limit),
+                totalItems: total
+            }
         });
+        
+    } catch (e) {
+        return errorResponse(res, e);
     }
 });
 
@@ -430,33 +376,13 @@ router.get("/compare",authentication,async(req,res)=>{
     try {
         const tmp=await User.findOne({_id:req.user._id})?.populate('compare');
         const compList=tmp?.compare;
-        
-        if(compList?.length==0)
-        {
-            return res.status(404).json({
-                success:false,
-                message:"No Mobiles to compare"
-            })
-        }
 
         if(!tmp)
-        {
-            return res.status(404).json({
-                success:false,
-                message:"User Not Found"
-            })
-        }
-
-        res.status(200).json({
-            success:true,
-            message:"Compare List",
-            list:compList
-        })
+            return errorResponse(res,null, "User Not Found",404);
+    
+        return successResponse(res,compList,"Compare List");
     } catch (error) {
-        res.status(500).json({
-            success:false,
-            message:error.message
-        })
+        return errorResponse(res, error);
     }
 })   
 
@@ -466,82 +392,42 @@ router.get("/compare/:key",authentication,async(req,res)=>{
         const mob=req.params.key;
         const user=await User.findOne({_id:req.user._id});
 
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User Not Found",
-            });
-        }
-
-        
+        if (!user) 
+            return errorResponse(res,null, "User Not Found",404);
 
         const entry=await Mobile.findOne({ key: mob });
 
         if(user?.compare?.length>=4 && !user?.compare.includes(entry._id))
-            {
-                return res.status(404).json({
-                    success: false,
-                    message: "Cannot compare more than 4 mobiles",
-                });
-            }
+            return errorResponse(res,null, "Cannot compare more than 4 mobiles",404);
 
         if(!entry)
-        {
-            return res.status(404).json({
-                success: false,
-                message: "Mobile Not Found",
-            });
-        }
+            return errorResponse(res,null, "Mobile Not Found",404);
 
         if(user?.compare.includes(entry._id))
         {
             user.compare.pull(entry._id);
             await user.save();
-
-            return res.status(200).json({
-                success: true,
-                message: "Removed from compare",
-            })
+            return successResponse(res,null,"Removed from compare");
         }
 
         if(user?.compare?.length>=4)
-        {
-            return res.status(404).json({
-                success: false,
-                message: "Cannot compare more than 4 mobiles",
-            });
-        }
+            return errorResponse(res,null, "Cannot compare more than 4 mobiles",404);
 
         user.compare.push(entry._id);
         await user.save();
 
-        res.status(200).json({
-            success: true,
-            message: "Added to compare",
-        });
-        
+        return successResponse(res,null,"Added to compare");
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return errorResponse(res, error);
     }
 })
 
-
 //get wishlist of a user
 router.get("/wishlist", authentication, async (req, res) => {
-    const userInfo = await User.findOne({ _id: req.user._id }).populate(
-        "wishlist"
-    );
-
+    const userInfo = await User.findOne({ _id: req.user._id }).populate("wishlist");
     const list = userInfo.wishlist;
 
-    res.status(200).json({
-        success: true,
-        message: "Wishlist",
-        list,
-    });
+    return successResponse(res,list,"Wishlist");
 });
 
 //set wishlist of a user (add or remove)
@@ -550,58 +436,35 @@ router.get("/wishlist/:key", authentication, async (req, res) => {
         const key = req.params.key;
         const user = await User.findOne({ _id: req.user._id });
 
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User Not Found",
-            });
-        }
+        if (!user) 
+            return errorResponse(res,null, "User Not Found",404);
 
         const entry = await Mobile.findOne({ key });
 
-        if (!entry) {
-            return res.status(404).json({
-                success: false,
-                message: "Mobile Not Found",
-            });
-        }
+        if (!entry) 
+            return errorResponse(res,null, "Mobile Not Found",404);
 
         if (user.wishlist.includes(entry._id)) {
             user.wishlist.pull(entry._id);
             await user.save();
-
-            return res.status(200).json({
-                success: true,
-                message: "Removed from wishlist",
-            });
+            return successResponse(res,null,"Removed from wishlist");
         }
 
         user.wishlist.push(entry._id);
         await user.save();
 
-        res.status(200).json({
-            success: true,
-            message: "Added to wishlist",
-        });
+        return successResponse(res,null,"Added to wishlist");
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return errorResponse(res, error);
     }
 });
 
 //get cart of a user
 router.get("/cart", authentication, async (req, res) => {
     const userInfo = await User.findOne({ _id: req.user._id }).populate("cart");
-
     const list = userInfo.cart;
 
-    res.status(200).json({
-        success: true,
-        message: "Cart",
-        list,
-    });
+    return successResponse(res,list,"Cart List");
 });
 
 //set cart of a user (add or remove)
@@ -610,43 +473,25 @@ router.get("/cart/:key", authentication, async (req, res) => {
         const key = req.params.key;
         const userEntry = await User.findOne({ _id: req.user._id });
 
-        if (!userEntry) {
-            return res.status(404).json({
-                success: false,
-                message: "User Not Found",
-            });
-        }
+        if (!userEntry) 
+            return errorResponse(res,null, "User Not Found",404);
 
         const entry = await Mobile.findOne({ key });
-        if (!entry) {
-            return res.status(404).json({
-                success: false,
-                message: "Mobile Not Found",
-            });
-        }
+        if (!entry) 
+            return errorResponse(res,null ,"Mobile Not Found",404);
 
         if (userEntry.cart.includes(entry._id)) {
             userEntry.cart.pull(entry._id);
             await userEntry.save();
-
-            return res.status(200).json({
-                success: true,
-                message: "Removed from cart",
-            });
+            return successResponse(res,null,"Removed from cart");
         }
 
         userEntry.cart.push(entry._id);
         await userEntry.save();
 
-        res.status(200).json({
-            success: true,
-            message: "Added to cart",
-        });
+        return successResponse(res,null,"Added to cart");
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        return errorResponse(res, error);
     }
 });
 
@@ -656,21 +501,12 @@ router.get("/:key", async (req, res) => {
         const key = req.params.key; 
         const mobFind = await Mobile.findOne({ key });
 
-        if (!mobFind) {
-            res.status(404).json({
-                success: false,
-                message: "Mobile Not Found",
-            });
-        } else
-            res.status(200).json({
-                success: true,
-                message: mobFind,
-            });
+        if (!mobFind) 
+            return errorResponse(res,null, "Mobile Not Found",404);
+
+        return successResponse(res,mobFind,"Specific Mobile");
     } catch (e) {
-        res.status(500).json({
-            success: false,
-            message: e.message,
-        });
+        return errorResponse(res, e);
     }
 });
 
@@ -678,54 +514,34 @@ router.get("/:key", async (req, res) => {
 router.put("/update/:key", async (req, res) => {
     try {
         const key = req.params.key; 
-
         const mobFind = await Mobile.findOne({ key }); 
 
-        if (!mobFind) {
-            res.status(404).json({
-                success: false,
-                message: "Mobile Not Found",
-            });
-        }
+        if (!mobFind) 
+            return errorResponse(res,null, "Mobile Not Found",404);
 
         const mobUpdate = await Mobile.findOneAndUpdate({ key }, req.body, {
             new: true,
         }); 
 
-        res.status(200).json({
-            success: true,
-            message: mobUpdate,
-        });
+        return successResponse(res,mobUpdate,"Mobile Updated");
     } catch (e) {
-        res.status(500).json({
-            success: false,
-            message: e.message,
-        });
+        return errorResponse(res, e);
     }
 });
 
 //delete a mobile entry
-router.delete(
-    "/mobiles/delete/:key",
-    authentication,
-    isAdmin,
-    async (req, res) => {
-        try {
-            const key = req.params.key;
-            const delMob = await Mobile.findOneAndDelete({ key }); 
+router.delete("/mobiles/delete/:key",authentication,isAdmin,async (req, res) => {
+    try {
+        const key = req.params.key;
+        const delMob = await Mobile.findOneAndDelete({ key }); 
 
-            if (!delMob) {
-                res.status(404).json({
-                    success: false,
-                    message: "Mobile Not Found",
-                });
-            } else
-                res.status(200).json({
-                    success: true,
-                    message: "Mobile Deleted Successfully",
-                });
-        } catch (e) {}
+        if (!delMob) 
+            return errorResponse(res,null, "Mobile Not Found",404);
+
+        return successResponse(res,null,"Mobile Deleted Successfully");
+    } catch (e) {
+        return errorResponse(res, e);
     }
-);
+});
 
 module.exports = router;
