@@ -5,29 +5,30 @@ const User = require("../models/User");
 const Imgdata = require("./data.js");
 const Order = require("../models/Orders");
 const rateLimit = require('express-rate-limit');
+const bcrypt = require("bcryptjs");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const jwt = require("jsonwebtoken");
 const { successResponse, errorResponse } = require('../utils/responseHandler');
 
 require("dotenv").config();
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const {
     authentication,
     isNotCustomer,
     isAdmin,
 } = require("../middleware/auth.js");
 
-// Rate limiting per route
+
+// Rate limiting 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 50,
     message: 'Too many login attempts, please try again later'
 });
 
-// Apply rate limiting to auth routes
 router.use('/login', authLimiter);
 router.use('/register', authLimiter);
+
 
 //Register
 router.post("/register", async (req, res) => {
@@ -97,35 +98,6 @@ router.post("/login", async (req, res) => {
     }
 });
 
-// Paginated mobile list
-// router.get("/mobiles/all", authentication, async (req, res) => {
-//     try {
-//         const page = parseInt(req.query.page) || 1;
-//         const limit = parseInt(req.query.limit) || 10;
-//         const skip = (page - 1) * limit;
-
-//         const [allMob, total] = await Promise.all([
-//             Mobile.find({})
-//                 .skip(skip)
-//                 .limit(limit)
-//                 .lean(),
-//             Mobile.countDocuments()
-//         ]);
-
-//         return successResponse(res,allMob,'Mobiles retrieved successfully',200, {
-//             pagination: {
-//                 currentPage: page,
-//                 totalPages: Math.ceil(total / limit),
-//                 totalItems: total
-//             }
-//         });
-//     } catch (e) {
-//         return errorResponse(res, e);
-//     }
-// });
-
-
-
 //post a mobile entry
 router.post("/mobiles/add", authentication,isNotCustomer, async (req, res) => {
     try {
@@ -165,9 +137,8 @@ router.get("/mobiles/filters", async (req, res) => {
     try {
         const brands = await Mobile.distinct("brand");
         const ram = await Mobile.distinct("ram");
-        console.log(brands, ram);
 
-        return successResponse(res,{ brands, ram },"Distinct Brands and RAM");
+        return successResponse(res,{ brands, ram },"Brands and RAM");
     } catch (e) {
         return errorResponse(res, e);
     }
@@ -200,7 +171,7 @@ router.post("/checkout", async (req, res) => {
             userId, // Associate with the user
             products,
             totalAmount: amount,
-            status: 'Pending', // Set initial status to 'Pending'
+            status: 'Pending', // initial status to 'Pending'
         });
 
         //link this order with user
