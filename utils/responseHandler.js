@@ -8,7 +8,6 @@ const successResponse = (res, data={}, message = 'Success', statusCode = 200, ex
 };
 
 const errorResponse = (res, error=null, message='Failed', statusCode = 500) => {
-    console.log(error,message,statusCode);
     return res.status(statusCode).json({
         success: false,
         message: error?.message || message || 'Internal Server Error'
