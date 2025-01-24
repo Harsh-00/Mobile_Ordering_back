@@ -18,7 +18,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // for urlencoded data like form data
 
 const Route = require("./routes/Route");
-app.use("/mobiles", Route);
+app.use("/v1", Route);
 
 app.use("/", (req, res) => {
 	return res.send("Welcome to Backend Server of Book My Phone");
